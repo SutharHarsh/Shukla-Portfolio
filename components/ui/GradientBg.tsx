@@ -43,20 +43,27 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
   const [tgX, setTgX] = useState(0);
   const [tgY, setTgY] = useState(0);
 
+  const [isSafari, setIsSafari] = useState(false);
+  const [isClient, setIsClient] = useState(false); // optional client-side gate
+
   useEffect(() => {
-    if (containerRef.current) {
-      const style = containerRef.current.style;
-      style.setProperty("--gradient-background-start", gradientBackgroundStart);
-      style.setProperty("--gradient-background-end", gradientBackgroundEnd);
-      style.setProperty("--first-color", firstColor);
-      style.setProperty("--second-color", secondColor);
-      style.setProperty("--third-color", thirdColor);
-      style.setProperty("--fourth-color", fourthColor);
-      style.setProperty("--fifth-color", fifthColor);
-      style.setProperty("--pointer-color", pointerColor);
-      style.setProperty("--size", size);
-      style.setProperty("--blending-value", blendingValue);
-    }
+    setIsClient(true); // only render on client
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const style = containerRef.current.style;
+    style.setProperty("--gradient-background-start", gradientBackgroundStart);
+    style.setProperty("--gradient-background-end", gradientBackgroundEnd);
+    style.setProperty("--first-color", firstColor);
+    style.setProperty("--second-color", secondColor);
+    style.setProperty("--third-color", thirdColor);
+    style.setProperty("--fourth-color", fourthColor);
+    style.setProperty("--fifth-color", fifthColor);
+    style.setProperty("--pointer-color", pointerColor);
+    style.setProperty("--size", size);
+    style.setProperty("--blending-value", blendingValue);
   }, [
     gradientBackgroundStart,
     gradientBackgroundEnd,
@@ -74,16 +81,8 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
     let animationFrameId: number;
 
     const move = () => {
-      if (!interactiveRef.current) return;
-
-      setCurX((prevCurX) => {
-        const newCurX = prevCurX + (tgX - prevCurX) / 20;
-        return newCurX;
-      });
-      setCurY((prevCurY) => {
-        const newCurY = prevCurY + (tgY - prevCurY) / 20;
-        return newCurY;
-      });
+      setCurX((prevCurX) => prevCurX + (tgX - prevCurX) / 20);
+      setCurY((prevCurY) => prevCurY + (tgY - prevCurY) / 20);
 
       if (interactiveRef.current) {
         interactiveRef.current.style.transform = `translate(${Math.round(
@@ -94,27 +93,25 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
       animationFrameId = requestAnimationFrame(move);
     };
 
-    move();
+    animationFrameId = requestAnimationFrame(move);
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [tgX, tgY, curX, curY]);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [curX, curY, tgX, tgY]);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (interactiveRef.current) {
-      const rect = interactiveRef.current.getBoundingClientRect();
-      setTgX(event.clientX - rect.left);
-      setTgY(event.clientY - rect.top);
-    }
+    if (!interactiveRef.current) return;
+    const rect = interactiveRef.current.getBoundingClientRect();
+    setTgX(event.clientX - rect.left);
+    setTgY(event.clientY - rect.top);
   };
 
-  const [isSafari, setIsSafari] = useState(false);
   useEffect(() => {
-    if (typeof navigator !== "undefined") {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
       setIsSafari(/^((?!chrome|android).)*safari/i.test(navigator.userAgent));
     }
   }, []);
+
+  if (!isClient) return null;
 
   return (
     <div
@@ -127,11 +124,7 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
       <svg className="hidden">
         <defs>
           <filter id="blurMe">
-            <feGaussianBlur
-              in="SourceGraphic"
-              stdDeviation="10"
-              result="blur"
-            />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
@@ -142,7 +135,9 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
           </filter>
         </defs>
       </svg>
+
       <div className={cn("", className)}>{children}</div>
+
       <div
         className={cn(
           "gradients-container h-full w-full blur-lg",
@@ -153,9 +148,7 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
           className={cn(
             `absolute [background:radial-gradient(circle_at_center,_var(--first-color)_0,_var(--first-color)_50%)_no-repeat]`,
             `[mix-blend-mode:var(--blending-value)] w-[var(--size)] h-[var(--size)] top-[calc(50%-var(--size)/2)] left-[calc(50%-var(--size)/2)]`,
-            `[transform-origin:center_center]`,
-            `animate-first`,
-            `opacity-100`
+            `[transform-origin:center_center] animate-first opacity-100`
           )}
         ></div>
 
@@ -165,8 +158,7 @@ export const BackgroundGradientAnimation: React.FC<BackgroundGradientAnimationPr
             onMouseMove={handleMouseMove}
             className={cn(
               `absolute [background:radial-gradient(circle_at_center,_rgba(var(--pointer-color),_0.8)_0,_rgba(var(--pointer-color),_0)_50%)_no-repeat]`,
-              `[mix-blend-mode:var(--blending-value)] w-full h-full -top-1/2 -left-1/2`,
-              `opacity-70`
+              `[mix-blend-mode:var(--blending-value)] w-full h-full -top-1/2 -left-1/2 opacity-70`
             )}
           ></div>
         )}
