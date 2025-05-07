@@ -2,22 +2,7 @@
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 
-export const BackgroundGradientAnimation = ({
-  gradientBackgroundStart = "rgb(108, 0, 162)",
-  gradientBackgroundEnd = "rgb(0, 17, 82)",
-  firstColor = "18, 113, 255",
-  secondColor = "221, 74, 255",
-  thirdColor = "100, 220, 255",
-  fourthColor = "200, 50, 50",
-  fifthColor = "180, 180, 50",
-  pointerColor = "140, 100, 255",
-  size = "80%",
-  blendingValue = "hard-light",
-  children,
-  className,
-  interactive = true,
-  containerClassName,
-}: {
+interface BackgroundGradientAnimationProps {
   gradientBackgroundStart?: string;
   gradientBackgroundEnd?: string;
   firstColor?: string;
@@ -32,6 +17,25 @@ export const BackgroundGradientAnimation = ({
   className?: string;
   interactive?: boolean;
   containerClassName?: string;
+}
+
+export const BackgroundGradientAnimation: React.FC<
+  BackgroundGradientAnimationProps
+> = ({
+  gradientBackgroundStart = "rgb(108, 0, 162)",
+  gradientBackgroundEnd = "rgb(0, 17, 82)",
+  firstColor = "18, 113, 255",
+  secondColor = "221, 74, 255",
+  thirdColor = "100, 220, 255",
+  fourthColor = "200, 50, 50",
+  fifthColor = "180, 180, 50",
+  pointerColor = "140, 100, 255",
+  size = "80%",
+  blendingValue = "hard-light",
+  children,
+  className,
+  interactive = true,
+  containerClassName,
 }) => {
   const interactiveRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +44,7 @@ export const BackgroundGradientAnimation = ({
   const [tgX, setTgX] = useState(0);
   const [tgY, setTgY] = useState(0);
 
+  // Set CSS variables on mount and when props change
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.body.style.setProperty(
@@ -59,21 +64,54 @@ export const BackgroundGradientAnimation = ({
       document.body.style.setProperty("--size", size);
       document.body.style.setProperty("--blending-value", blendingValue);
     }
-  }, []);
+  }, [
+    gradientBackgroundStart,
+    gradientBackgroundEnd,
+    firstColor,
+    secondColor,
+    thirdColor,
+    fourthColor,
+    fifthColor,
+    pointerColor,
+    size,
+    blendingValue,
+  ]);
 
+  // Animation loop using requestAnimationFrame
   useEffect(() => {
-    function move() {
+    let animationFrameId: number;
+
+    const move = () => {
       if (!interactiveRef.current) {
         return;
       }
-      setCurX(curX + (tgX - curX) / 20);
-      setCurY(curY + (tgY - curY) / 20);
-      interactiveRef.current.style.transform = `translate(${Math.round(
-        curX
-      )}px, ${Math.round(curY)}px)`;
-    }
+      setCurX((prevCurX) => {
+        const newCurX = prevCurX + (tgX - prevCurX) / 20;
+        if (interactiveRef.current) {
+          interactiveRef.current.style.transform = `translate(${Math.round(
+            newCurX
+          )}px, ${Math.round(curY)}px)`;
+        }
+        return newCurX;
+      });
+      setCurY((prevCurY) => {
+        const newCurY = prevCurY + (tgY - prevCurY) / 20;
+        if (interactiveRef.current) {
+          interactiveRef.current.style.transform = `translate(${Math.round(
+            curX
+          )}px, ${Math.round(newCurY)}px)`;
+        }
+        return newCurY;
+      });
+
+      animationFrameId = requestAnimationFrame(move);
+    };
 
     move();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
   }, [tgX, tgY]);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
